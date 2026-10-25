@@ -5,7 +5,7 @@
 #
 # Operator-facing install path:
 #   brew tap kstrat2001/tap
-#   brew install darkmux                # stable release (v5.6.0)
+#   brew install darkmux                # stable release (v5.7.0)
 #   brew install --HEAD darkmux         # build from main instead
 #
 # For local development / smoke testing:
@@ -17,10 +17,21 @@
 class Darkmux < Formula
   desc "Mission orchestrator and lab for local AI, running your models or a cloud endpoint"
   homepage "https://darkmux.com"
-  # Stable release: v5.6.0, an eval owns its workload and grader (eval_dir, bundle format 5).
+  # Stable release: v5.7.0, Linux lab runs keep their OS and context window; tarball builds stamp the commit.
   # See CHANGELOG.md.
-  url "https://github.com/kstrat2001/darkmux/archive/refs/tags/v5.6.0.tar.gz"
-  sha256 "291a88a8ef6aa247bbd4e138c305c11f95ea0c1f4037cb74461f500bd5763db0"
+  #
+  # The tarball has no `.git`, so the full commit the lab needs for
+  # `darkmuxCommit` (#3373) comes from the tag this formula's `url` points at.
+  #
+  # BUMP FOR EACH RELEASE: update BOTH the version here AND the commit below
+  # together. The commit is the full SHA of the tag being released. Annotated
+  # tags need the commit peel: `git rev-parse vX.Y.Z^{commit}`. Plain
+  # `git rev-parse vX.Y.Z` returns the tag object and would bake the wrong
+  # hash. A stale commit here means the lab submits an empty/mismatched
+  # `darkmuxCommit` for the release that actually shipped. After bumping,
+  # update the `sha256` on the url line too.
+  url "https://github.com/kstrat2001/darkmux/archive/refs/tags/v5.7.0.tar.gz"
+  sha256 "b504e6ba2f98f191fa8a08e2637c78b9e5234a752c955322a16e399af2f0b4f4"
   license "MIT"
   head "https://github.com/kstrat2001/darkmux.git", branch: "main"
 
@@ -34,12 +45,15 @@ class Darkmux < Formula
   # don't run.
 
   def install
-    # (#1129) Stamp a stable (tarball) build as a release so `darkmux --version`,
+    # (#1129, #3373) Stamp a stable (tarball) build as a release so `darkmux --version`,
     # `darkmux doctor`, and the viewer header read `<version> (release)`. The
     # tarball has no `.git`, so without this stamp the build would be
-    # indistinguishable from a bare source build. A `--HEAD` build has a git
-    # checkout and bakes its short SHA instead, so leave it unstamped.
+    # indistinguishable from a bare source build. #3373: ALSO stamp the full
+    # commit of the release tag the tarball was cut from, via DARKMUX_COMMIT, so
+    # the run's `darkmuxCommit` carries the commit the lab actually ran against
+    # instead of being empty (the tarball has no `.git` for build.rs to read).
     ENV["DARKMUX_RELEASE"] = "1" unless build.head?
+    ENV["DARKMUX_COMMIT"] = "6016cd29f6865d5203cb2a7b859b933393054085" unless build.head?
 
     # Workspace-aware install. The root [[bin]] target in Cargo.toml is the
     # only thing that needs to land in bin/. The std_cargo_args helper sets
